@@ -11,12 +11,16 @@ exports.View =
 
             { control: "stackpanel", width: "*", background: "#ff6600", orientation: "Horizontal", contents: [
                 { control: "image", resource: "{logo}", width: 175 },
+                { select: "All", filter: { deviceMetric: "os", is: "Web" }, contents: [
+                    { control: "rectangle", width: "*" },
+                    { control: "button", verticalAlignment: "Center", margin: { right: 15 }, caption: "Refresh", icon: "refresh", binding: "onRefresh" },
+                ]},
             ]},
 
             { control: "text", value: "Directory: {dir}" },
 
             { control: "stackpanel", width: "*", height: "*", visibility: "{items}", contents: [
-                { control: "listview", select: "None", height: "*", width: "*", margin: { bottom: 0 }, binding: { items: "items", onItemClick: { command: "itemSelected", item: "{$data}" } }, 
+                { control: "listview", select: "None", height: "*", width: "*", margin: { bottom: 0 }, binding: { items: "items", onItemClick: { command: "onItemSelected", item: "{$data}" } }, 
                     itemTemplate:
                     { 
                         control: "stackpanel", orientation: "Horizontal", width: "*", padding: { top: 5, bottom: 5 }, contents: [
@@ -28,7 +32,13 @@ exports.View =
                         ]
                     }
                 }
-            ]}
+            ]},
+
+            // Platform-specific Refresh buttons...
+            //
+            { control: "commandBar.button", text: "Refresh", winIcon: "Refresh", commandBar: "Bottom", binding: "onRefresh", filter: { deviceMetric: "os", is: ["Windows", "WinPhone"] } },
+            { control: "actionBar.item", text: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "Android" } }, // !!! Icon?
+            { control: "navBar.button", systemItem: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "iOS" } },
         ]}
     ]
 }
@@ -38,83 +48,33 @@ exports.InitializeViewModel = function(context, session)
     var viewModel =
     {
         logo: Synchro.getResourceUrl(context, "joyent-logo.png"),
-        dirImage: Synchro.getResourceUrl(context, "folder.png"),
-        objImage: Synchro.getResourceUrl(context, "object.png"),
         dir: "/",
         items: []
     }
     return viewModel;
 }
 
-function getFiles(context, viewModel, path, callback)
-{
-    var client = joyent.getMantaClient(context);
-    var opts = {};
-
-    var items = [];
-
-    client.ls(path, opts, function (err, res) 
-    {
-        if (err)
-        {
-            callback(err);
-            return;
-        }
-
-        res.on('object', function (obj) {
-            obj.img = viewModel.objImage;
-            items.push(obj);
-            console.log(obj);
-        });
-
-        res.on('directory', function (dir) {
-            dir.img = viewModel.dirImage;
-            items.push(dir);
-            console.log(dir);
-        });
-
-        res.once('error', function (err) {
-            console.error(err.stack);
-            callback(err);
-        });
-
-        res.once('end', function () {
-            console.log('all done:', items);
-            callback(null, items);
-        });
-    });
-}
-
 exports.LoadViewModel = function * (context, session, viewModel)
 {
-    viewModel.items = yield Synchro.yieldAwaitable(context, function(callback)
-    {
-        getFiles(context, viewModel, '~~/', callback);
-    });
+    viewModel.items = yield joyent.getFiles(context, '~~/');
 
     if (viewModel.items.length)
     {
         viewModel.dir = viewModel.items[0].parent;
     }
-
-    console.log("ViewModel:", viewModel);
 }
 
 exports.Commands = 
 {
-    itemSelected: function * (context, session, viewModel, params)
+    onItemSelected: function * (context, session, viewModel, params)
     {
-        // !!!
-        console.log("Item selected:", params.item);
-
-        var path = params.item.parent + "/" + params.item.name;
-
-        viewModel.dir = path;
-        viewModel.items = yield Synchro.yieldAwaitable(context, function(callback)
-        {
-            getFiles(context, viewModel, path, callback);
-        });
-
-        console.log("New viewModel:", viewModel);
+        viewModel.dir = params.item.parent + "/" + params.item.name;
+        viewModel.items = yield joyent.getFiles(context, viewModel.dir);
+    },
+    onRefresh: function * (context, session, viewModel, params)
+    {
+        // !!! Waiting indicator / interimUpdate?
+        //
+        console.log("Storage referes"); // !!! TODO
     },
 }

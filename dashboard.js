@@ -7,8 +7,12 @@ exports.View =
     title: "Dashboard",
     elements:
     [
-        { control: "stackpanel", width: "*", margin: { bottom: 5 }, background: "#ff6600", contents: [
-            { control: "image", resource: "{logo}", width: 175 }
+        { control: "stackpanel", width: "*", margin: { bottom: 5 }, background: "#ff6600", orientation: "Horizontal", contents: [
+            { control: "image", resource: "{logo}", width: 175 },
+            { select: "All", filter: { deviceMetric: "os", is: "Web" }, contents: [
+                { control: "rectangle", width: "*" },
+                { control: "button", verticalAlignment: "Center", margin: { right: 15 }, caption: "Refresh", icon: "refresh", binding: "onRefresh" },
+            ]},            
         ]},
 
         { control: "stackpanel", width: "*", margin: { left: 5, bottom: 5 }, orientation: "Horizontal", contents: [
@@ -46,6 +50,11 @@ exports.View =
                         { control: "text", value: "Manta Storage", style: "dashcap", width: "*" },
                         { control: "image", resource: "{mantaLogo}", width: 40 }
                     ]},
+
+                    { control: "stackpanel", width: "*", orientation: "Horizontal", contents: [
+                        { control: "text", value: "{storageUsed}", color: "White", verticalAlignment: "Bottom", font: { bold: true, size: 20 } },
+                        { control: "text", value: "Mb", color: "White", verticalAlignment: "Bottom", fontsize: 20 },
+                    ]},
                 ]},
             ]},
 
@@ -55,8 +64,19 @@ exports.View =
                         { control: "text", value: "Current Usage", style: "dashcap", width: "*" },
                         { control: "image", resource: "{usageLogo}", width: 40 }
                     ]},
+
+                    { control: "stackpanel", width: "*", orientation: "Horizontal", contents: [
+                        { control: "text", value: "{currentUsage}", color: "White", verticalAlignment: "Bottom", font: { bold: true, size: 20 } },
+                        { control: "text", value: "Spent", color: "White", verticalAlignment: "Bottom", fontsize: 20 },
+                    ]},
                 ]},
             ]},
+
+            // Platform-specific Refresh buttons...
+            //
+            { control: "commandBar.button", text: "Refresh", winIcon: "Refresh", commandBar: "Bottom", binding: "onRefresh", filter: { deviceMetric: "os", is: ["Windows", "WinPhone"] } },
+            { control: "actionBar.item", text: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "Android" } }, // !!! Icon?
+            { control: "navBar.button", systemItem: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "iOS" } },
         ]}
     ]
 }
@@ -78,30 +98,15 @@ exports.InitializeViewModel = function * (context, session)
         dataCenter: session.dataCenter,
         running: "?",
         stopped: "?",
+        storageUsed: "124.3",
+        currentUsage: "$0.00"
     }
     return viewModel;
 }
 
-function * getMachineCounts(context, dataCenter)
-{
-    var client = joyent.getSdcClient(context, dataCenter);
-
-    var running = yield Synchro.yieldAwaitable(context, function(callback)
-    {
-        client.countMachines({ state: "running" }, callback);
-    });
-
-    var stopped = yield Synchro.yieldAwaitable(context, function(callback)
-    {
-        client.countMachines({ state: "stopped" }, callback);
-    });
-
-    return { running: running[0], stopped: stopped[0] };
-}
-
 exports.LoadViewModel = function * (context, session, viewModel)
 {
-    var counts = yield getMachineCounts(context, session.dataCenter);
+    var counts = yield joyent.getMachineCounts(context, session.dataCenter);
     viewModel.running = counts.running;
     viewModel.stopped = counts.stopped;
 }
@@ -129,8 +134,14 @@ exports.Commands =
         viewModel.stopped = "?";
         yield Synchro.interimUpdateAwaitable(context);
 
-        var counts = yield getMachineCounts(context, session.dataCenter);
+        var counts = yield joyent.getMachineCounts(context, session.dataCenter);
         viewModel.running = counts.running;
         viewModel.stopped = counts.stopped;
+    },
+    onRefresh: function * (context, session, viewModel, params)
+    {
+        // !!! Waiting indicator / interimUpdate?
+        //
+        // !!! TODO
     },
 }
