@@ -1,0 +1,15 @@
+{
+  "name": "joyent",
+  "version": "0.0.1",
+  "description": "Joyent SmartDC",
+  "main": "dashboard",
+  "private": true,
+  "engines": {
+    "synchro": "*"
+  },
+  "dependencies": {
+    "manta": "^3.0.0",
+    "smartdc": "^8.1.0"
+  },
+  "hooks": [ "lib/stylehook" ]
+}
