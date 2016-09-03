@@ -1,6 +1,7 @@
 // Storage page
 //
 var joyent = require('./lib/joyent');
+var path = require('path');
 
 exports.View =
 {
@@ -17,7 +18,7 @@ exports.View =
                 ]},
             ]},
 
-            { control: "text", value: "Directory: {dir}" },
+            { control: "text", value: "Directory: {dir}", width: "*" },
 
             { control: "stackpanel", width: "*", height: "*", visibility: "{items}", contents: [
                 { control: "listview", select: "None", height: "*", width: "*", margin: { bottom: 0 }, binding: { items: "items", onItemClick: { command: "onItemSelected", item: "{$data}" } }, 
@@ -26,8 +27,11 @@ exports.View =
                         control: "stackpanel", orientation: "Horizontal", width: "*", padding: { top: 5, bottom: 5 }, contents: [
                             { control: "image", resource: "{img}", width: 60, height: 60 },
                             { control: "stackpanel", orientation: "Vertical", width: "*", padding: { left: 5 }, contents: [
-                                { control: "text", value: "{name}", width: "*", font: { bold: true, size: 10 } },
-                                { control: "text", value: "Type: {type}", width: "*", fontsize: 8 },
+                                { control: "stackpanel", orientation: "Horizontal", width: "*", padding: 0, contents: [
+                                    { control: "text", value: "{name}", font: { bold: true, size: 10 } },
+                                    { control: "text", value: "- {displaySize}", visibility: "{displaySize}", font: { size: 10 } },
+                                ]},
+                                { control: "text", value: "{modified}", width: "*", fontsize: 8 },
                             ]},
                         ]
                     }
@@ -54,22 +58,54 @@ exports.InitializeViewModel = function(context, session)
     return viewModel;
 }
 
+function * getFiles(context, dir)
+{
+    var items = yield joyent.getFiles(context, dir);
+
+    if ((dir !== '~~/') && (path.posix.dirname(dir) != '/'))
+    {
+        var parent = {
+            name: "..",
+            type: "directory",
+            img: Synchro.getResourceUrl(context, "folder_up_icon.png"),
+        }
+        items.unshift(parent);
+    }
+
+    return items;
+}
+
 exports.LoadViewModel = function * (context, session, viewModel)
 {
-    viewModel.items = yield joyent.getFiles(context, '~~/');
-
-    if (viewModel.items.length)
+    if (!session.dir)
     {
-        viewModel.dir = viewModel.items[0].parent;
+        session.dir = '~~/';
     }
+
+    viewModel.items = yield getFiles(context, session.dir);
+
+    if ((session.dir === '~~/') && viewModel.items.length)
+    {
+        session.dir = viewModel.items[0].parent;
+    }
+
+    viewModel.dir = session.dir;
 }
 
 exports.Commands = 
 {
     onItemSelected: function * (context, session, viewModel, params)
     {
-        viewModel.dir = params.item.parent + "/" + params.item.name;
-        viewModel.items = yield joyent.getFiles(context, viewModel.dir);
+        if (params.item.name === '..')
+        {
+            session.dir = path.posix.dirname(session.dir);
+        }
+        else
+        {
+            session.dir = params.item.parent + "/" + params.item.name;
+        }
+        viewModel.items = yield getFiles(context, session.dir);
+        viewModel.dir = session.dir;
     },
     onRefresh: function * (context, session, viewModel, params)
     {
