@@ -33,9 +33,10 @@ exports.View =
             ]},
 
             { control: "stackpanel", width: "*", orientation: "Horizontal", contents: [
-                { control: "button", caption: "Stop", icon: "stop" },
-                { control: "button", caption: "Reboot", icon: "loop" },
-                { control: "button", caption: "Delete", icon: "block" },
+                // { control: "button", caption: "Start", icon: "play_arrow", binding: "onStart" },
+                { control: "button", caption: "Stop", icon: "stop", binding: "onStop" },
+                { control: "button", caption: "Reboot", icon: "loop", binding: "onReboot" },
+                { control: "button", caption: "Delete", icon: "delete", binding: "onDelete" },
             ]},
 
             // Platform-specific Refresh buttons...
@@ -63,7 +64,23 @@ exports.Commands =
     {
         // !!! Waiting indicator / interimUpdate?
         //
-        console.log("Machine refresh"); // !!! TODO
+        console.log("Machine refresh");
         viewModel.machine = yield joyent.getMachine(context, session.dataCenter, viewModel.machine.id);
+    },
+    onStart: function * (context, session, viewModel)
+    {
+        console.log("Machine start"); // !!! TODO
+    },
+    onStop: function * (context, session, viewModel)
+    {
+        console.log("Machine stop"); // !!! TODO
+    },
+    onReboot: function * (context, session, viewModel)
+    {
+        console.log("Machine reboot"); // !!! TODO
+    },
+    onDelete: function * (context, session, viewModel)
+    {
+        console.log("Machine delete"); // !!! TODO
     },
 }

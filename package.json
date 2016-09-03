@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "manta": "^3.0.0",
-    "smartdc": "^8.1.0"
+    "smartdc": "^8.1.0",
+    "memorystream": "^0.3.1"
   },
   "hooks": [ "lib/stylehook" ]
 }

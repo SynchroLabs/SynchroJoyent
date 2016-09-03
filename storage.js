@@ -96,16 +96,23 @@ exports.Commands =
 {
     onItemSelected: function * (context, session, viewModel, params)
     {
-        if (params.item.name === '..')
+        if (params.item.type === 'object')
         {
-            session.dir = path.posix.dirname(session.dir);
+            Synchro.pushAndNavigateTo(context, "object", { object: params.item });
         }
         else
         {
-            session.dir = params.item.parent + "/" + params.item.name;
+            if (params.item.name === '..')
+            {
+                session.dir = path.posix.dirname(session.dir);
+            }
+            else
+            {
+                session.dir = params.item.parent + "/" + params.item.name;
+            }
+            viewModel.items = yield getFiles(context, session.dir);
+            viewModel.dir = session.dir;
         }
-        viewModel.items = yield getFiles(context, session.dir);
-        viewModel.dir = session.dir;
     },
     onRefresh: function * (context, session, viewModel, params)
     {
