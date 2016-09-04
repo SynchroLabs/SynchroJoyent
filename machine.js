@@ -32,12 +32,23 @@ exports.View =
                 { control: "text", value: "State: {machine.state}", width: "*", fontsize: 8 },
             ]},
 
-            { control: "stackpanel", width: "*", orientation: "Horizontal", contents: [
-                // { control: "button", caption: "Start", icon: "play_arrow", binding: "onStart" },
+            { control: "stackpanel", width: "*", orientation: "Horizontal", visibility: "{!operation}", contents: [
+                { control: "button", caption: "Start", icon: "play_arrow", binding: "onStart" },
                 { control: "button", caption: "Stop", icon: "stop", binding: "onStop" },
                 { control: "button", caption: "Reboot", icon: "loop", binding: "onReboot" },
                 { control: "button", caption: "Delete", icon: "delete", binding: "onDelete" },
             ]},
+
+            { select: "First", contents: [
+                { filter: { deviceMetric: "os", is: "Web" }, control: "stackpanel", orientation: "Vertical", visibility: "{operation}", contents: [
+                    { control: "progressring", width: 300, value: "{operation}", verticalAlignment: "Center" },
+                    { control: "text", value: "{operation}...", foreground: "Red", font: { size: 24, bold: true }, verticalAlignment: "Center" },
+                ] },
+                { control: "stackpanel", orientation: "Horizontal", visibility: "{operation}", contents: [
+                    { control: "progressring", height: 50, width: 50, value: "{operation}", verticalAlignment: "Center" },
+                    { control: "text", value: "{operation}...", foreground: "Red", font: { size: 24, bold: true }, verticalAlignment: "Center" },
+                ] },
+            ] },
 
             // Platform-specific Refresh buttons...
             //
@@ -58,6 +69,88 @@ exports.InitializeViewModel = function (context, session, params)
     return viewModel;
 }
 
+function waitInterval(intervalMillis, callback)
+{
+    setTimeout(function(){callback()}, intervalMillis);
+}
+
+// https://apidocs.joyent.com/cloudapi/#machine-state-diagram
+//
+// Running - Stop, Reboot, Delete
+// Stopped - Start, Delete
+// Stopping - <none> - wait
+// Deleted - <none>
+//
+function * processOperation(context, session, viewModel, operation, operationTime)
+{
+    // Check status until we get one that represents termination of operation
+    //
+    // Operations: Starting, Stopping, Rebooting, Deleting
+    //
+    var terminate = false;
+ 
+    viewModel.operation = operation;
+    while (Synchro.isActiveInstance(context) && !terminate)
+    {
+        yield Synchro.interimUpdateAwaitable(context);
+
+        if (operation === 'Rebooting')
+        {
+            var audit = yield joyent.getMachineAudit(context, session.dataCenter, viewModel.machine.id);
+            var actions = audit.filter(function (a) {
+                return (a.action === 'reboot' && (new Date(a.time) > operationTime));
+            });
+
+            if (actions.length > 0)
+            {
+                terminate = true;
+                if (actions[0].success !== 'yes') 
+                {
+                    // !!! Alert the user that reboot failed
+                }
+            }
+        }
+        else // operation is: Starting - Stopping - Deleting
+        {
+            try
+            {
+                viewModel.machine = yield joyent.getMachine(context, session.dataCenter, viewModel.machine.id, true); // nocache
+                if (operation === 'Starting')
+                {
+                    terminate = (viewModel.machine.state === 'running');
+                }
+                else if (operation === 'Stopping')
+                {
+                    terminate = (viewModel.machine.state === 'stopped');
+                }
+            }
+            catch (err)
+            {
+                if ((operation === 'Deleting') && (err.statusCode === 410))
+                {
+                    viewModel.machine.state = 'deleted';
+                    terminate = true;
+                }
+                else
+                {
+                    throw err;
+                }
+            }
+        }
+
+        if (terminate)
+        {
+            viewModel.operation = null;
+        }
+        else
+        {
+            // Wait before we try again...
+            //
+            yield Synchro.yieldAwaitable(context, function(cb){ waitInterval(3000, cb) });   
+        }
+    } 
+}
+
 exports.Commands = 
 {
     onRefresh: function * (context, session, viewModel, params)
@@ -65,22 +158,31 @@ exports.Commands =
         // !!! Waiting indicator / interimUpdate?
         //
         console.log("Machine refresh");
-        viewModel.machine = yield joyent.getMachine(context, session.dataCenter, viewModel.machine.id);
+        viewModel.machine = yield joyent.getMachine(context, session.dataCenter, viewModel.machine.id); // !!! add "true" as last param for nocache
     },
     onStart: function * (context, session, viewModel)
     {
-        console.log("Machine start"); // !!! TODO
+        console.log("Machine start");
+        yield joyent.startMachine(context, session.dataCenter, viewModel.machine.id);
+        yield processOperation(context, session, viewModel, "Starting");
     },
     onStop: function * (context, session, viewModel)
     {
-        console.log("Machine stop"); // !!! TODO
+        console.log("Machine stop");
+        yield joyent.stopMachine(context, session.dataCenter, viewModel.machine.id);
+        yield processOperation(context, session, viewModel, "Stopping");
     },
     onReboot: function * (context, session, viewModel)
     {
-        console.log("Machine reboot"); // !!! TODO
+        console.log("Machine reboot");
+        var operationTime = new Date();
+        yield joyent.rebootMachine(context, session.dataCenter, viewModel.machine.id);
+        yield processOperation(context, session, viewModel, "Rebooting", operationTime);
     },
     onDelete: function * (context, session, viewModel)
     {
-        console.log("Machine delete"); // !!! TODO
+        console.log("Machine delete");
+        yield joyent.deleteMachine(context, session.dataCenter, viewModel.machine.id);
+        yield processOperation(context, session, viewModel, "Deleting");
     },
 }
