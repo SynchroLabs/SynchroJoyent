@@ -48,7 +48,7 @@ exports.View =
     ]
 }
 
-exports.InitializeViewModel = function * (context, session, params)
+exports.InitializeViewModel = function * (context, session, params, state)
 {
     var viewModel =
     {
@@ -57,19 +57,35 @@ exports.InitializeViewModel = function * (context, session, params)
         dataCenter: session.dataCenter,
         machines: []
     }
+
+    if (session.invalidateCompute)
+    {
+        delete session.invalidateCompute;
+        session.invalidateDashboard = true;
+    }
+    else if (state)
+    {
+        viewModel.machines = state.machines;
+    }
+
     return viewModel;
 }
 
 exports.LoadViewModel = function * (context, session, viewModel)
 {
-    viewModel.machines = yield joyent.listMachines(context, session.dataCenter);
+    if (viewModel.machines.length == 0) // If not restored from state
+    {
+        viewModel.machines = yield joyent.listMachines(context, session.dataCenter);
+    }
 }
 
 exports.Commands = 
 {
     onMachineSelected: function (context, session, viewModel, params)
     {
-        var state = viewModel;
+        var state = {
+            machines: viewModel.machines
+        }
         return Synchro.pushAndNavigateTo(context, "machine", { machine: params.machine }, state);
     },
     onDataCenter: function * (context, session, viewModel, params)
@@ -77,6 +93,7 @@ exports.Commands =
         // !!! Waiting indicator / interimUpdate?
         //
         session.dataCenter = viewModel.dataCenter;
+        session.invalidateDashboard = true;
         viewModel.machines = yield joyent.listMachines(context, session.dataCenter);
     },
     onRefresh: function * (context, session, viewModel, params)

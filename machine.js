@@ -33,9 +33,9 @@ exports.View =
             ]},
 
             { control: "stackpanel", width: "*", orientation: "Horizontal", visibility: "{!operation}", contents: [
-                { control: "button", caption: "Start", icon: "play_arrow", binding: "onStart" },
-                { control: "button", caption: "Stop", icon: "stop", binding: "onStop" },
-                { control: "button", caption: "Reboot", icon: "loop", binding: "onReboot" },
+                { control: "button", caption: "Start", icon: "play_arrow", binding: "onStart", visibility: "eval({machine.state} == 'stopped')" },
+                { control: "button", caption: "Stop", icon: "stop", binding: "onStop", visibility: "eval({machine.state} == 'running')"  },
+                { control: "button", caption: "Reboot", icon: "loop", binding: "onReboot", visibility: "eval({machine.state} == 'running')"  },
                 { control: "button", caption: "Delete", icon: "delete", binding: "onDelete" },
             ]},
 
@@ -151,37 +151,62 @@ function * processOperation(context, session, viewModel, operation, operationTim
     } 
 }
 
+function confirm(context, message, onOk)
+{
+    var messageBox = 
+    {
+        title: "Joyent",
+        message: message,
+        options:
+        [
+            { label: "Ok", command: onOk },
+            { label: "Cancel" },
+        ]
+    }
+    return Synchro.showMessage(context, messageBox);
+}
+
 exports.Commands = 
 {
     onRefresh: function * (context, session, viewModel, params)
     {
         // !!! Waiting indicator / interimUpdate?
         //
-        console.log("Machine refresh");
-        viewModel.machine = yield joyent.getMachine(context, session.dataCenter, viewModel.machine.id); // !!! add "true" as last param for nocache
+        viewModel.machine = yield joyent.getMachine(context, session.dataCenter, viewModel.machine.id, true);
     },
     onStart: function * (context, session, viewModel)
     {
-        console.log("Machine start");
+        session.invalidateCompute = true;
         yield joyent.startMachine(context, session.dataCenter, viewModel.machine.id);
         yield processOperation(context, session, viewModel, "Starting");
     },
     onStop: function * (context, session, viewModel)
     {
-        console.log("Machine stop");
+        return confirm(context, "Stop this instance?", "doStop");
+    },    
+    doStop: function * (context, session, viewModel)
+    {
+        session.invalidateCompute = true;
         yield joyent.stopMachine(context, session.dataCenter, viewModel.machine.id);
         yield processOperation(context, session, viewModel, "Stopping");
-    },
+    },    
     onReboot: function * (context, session, viewModel)
     {
-        console.log("Machine reboot");
+        return confirm(context, "Reboot this instance?", "doReboot");
+    },    
+    doReboot: function * (context, session, viewModel)
+    {
         var operationTime = new Date();
         yield joyent.rebootMachine(context, session.dataCenter, viewModel.machine.id);
         yield processOperation(context, session, viewModel, "Rebooting", operationTime);
     },
     onDelete: function * (context, session, viewModel)
     {
-        console.log("Machine delete");
+        return confirm(context, "Delete this instance?", "doDelete");
+    },    
+    doDelete: function * (context, session, viewModel)
+    {
+        session.invalidateCompute = true;
         yield joyent.deleteMachine(context, session.dataCenter, viewModel.machine.id);
         yield processOperation(context, session, viewModel, "Deleting");
     },

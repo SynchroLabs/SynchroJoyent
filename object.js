@@ -53,10 +53,6 @@ exports.InitializeViewModel = function(context, session, params)
     return viewModel;
 }
 
-exports.LoadViewModel = function * (context, session, viewModel)
-{
-}
-
 exports.Commands = 
 {
     onOpen: function * (context, session, viewModel, params)
@@ -104,6 +100,10 @@ exports.Commands =
     },
     doDelete: function * (context, session, viewModel, params)
     {
-        console.log("Do delete!"); // !!!
+        yield joyent.deleteFile(context, viewModel.object.parent + "/" + viewModel.object.name);
+
+        // !!! Exit page (return to parent, signal reload)
+        //
+        Synchro.pop(context);
     }
 }

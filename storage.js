@@ -47,7 +47,7 @@ exports.View =
     ]
 }
 
-exports.InitializeViewModel = function(context, session)
+exports.InitializeViewModel = function(context, session, params, state)
 {
     var viewModel =
     {
@@ -55,6 +55,12 @@ exports.InitializeViewModel = function(context, session)
         dir: "/",
         items: []
     }
+
+    if (state)
+    {
+        viewModel.items = state.items;
+    }
+
     return viewModel;
 }
 
@@ -82,7 +88,10 @@ exports.LoadViewModel = function * (context, session, viewModel)
         session.dir = '~~/';
     }
 
-    viewModel.items = yield getFiles(context, session.dir);
+    if (viewModel.items.length == 0) // If not restored from state
+    {
+        viewModel.items = yield getFiles(context, session.dir);
+    }
 
     if ((session.dir === '~~/') && viewModel.items.length)
     {
@@ -98,7 +107,10 @@ exports.Commands =
     {
         if (params.item.type === 'object')
         {
-            Synchro.pushAndNavigateTo(context, "object", { object: params.item });
+            var state = {
+                items: viewModel.items
+            }
+            Synchro.pushAndNavigateTo(context, "object", { object: params.item }, state);
         }
         else
         {
@@ -118,6 +130,6 @@ exports.Commands =
     {
         // !!! Waiting indicator / interimUpdate?
         //
-        console.log("Storage referes"); // !!! TODO
+        viewModel.items = yield getFiles(context, session.dir);
     },
 }

@@ -81,7 +81,7 @@ exports.View =
     ]
 }
 
-exports.InitializeViewModel = function * (context, session)
+exports.InitializeViewModel = function * (context, session, params, state)
 {
     if (!session.dataCenter)
     {
@@ -101,11 +101,44 @@ exports.InitializeViewModel = function * (context, session)
         storageUsed: "124.3",
         currentUsage: "$0.00"
     }
+
+    if (session.invalidateDashboard)
+    {
+        delete session.invalidateDashboard;
+    }
+    else if (state)
+    {
+        viewModel.running = state.running;
+        viewModel.stopped = state.stopped;
+    }
+
     return viewModel;
 }
 
 exports.LoadViewModel = function * (context, session, viewModel)
 {
+    if (viewModel.running == '?') // If not restored from state
+    {
+        var counts = yield joyent.getMachineCounts(context, session.dataCenter);
+        viewModel.running = counts.running;
+        viewModel.stopped = counts.stopped;
+    }
+}
+
+function getState(viewModel)
+{
+    return {
+        running: viewModel.running,
+        stopped: viewModel.stopped
+    }
+}
+
+function * loadCounts(context, session, viewModel)
+{
+    viewModel.running = "?";
+    viewModel.stopped = "?";
+    yield Synchro.interimUpdateAwaitable(context);
+
     var counts = yield joyent.getMachineCounts(context, session.dataCenter);
     viewModel.running = counts.running;
     viewModel.stopped = counts.stopped;
@@ -115,11 +148,11 @@ exports.Commands =
 {
     goCompute: function (context, session, viewModel, params)
     {
-        return Synchro.pushAndNavigateTo(context, "compute");
+        return Synchro.pushAndNavigateTo(context, "compute", null, getState(viewModel));
     },
     goStorage: function (context, session, viewModel, params)
     {
-        return Synchro.pushAndNavigateTo(context, "storage");
+        return Synchro.pushAndNavigateTo(context, "storage", null, getState(viewModel));
     },
     goUsage: function (context, session, viewModel, params)
     {
@@ -129,19 +162,12 @@ exports.Commands =
     onDataCenter: function * (context, session, viewModel, params)
     {
         session.dataCenter = viewModel.dataCenter;
-
-        viewModel.running = "?";
-        viewModel.stopped = "?";
-        yield Synchro.interimUpdateAwaitable(context);
-
-        var counts = yield joyent.getMachineCounts(context, session.dataCenter);
-        viewModel.running = counts.running;
-        viewModel.stopped = counts.stopped;
+        yield loadCounts(context, session, viewModel);
     },
     onRefresh: function * (context, session, viewModel, params)
     {
         // !!! Waiting indicator / interimUpdate?
         //
-        // !!! TODO
+        yield loadCounts(context, session, viewModel);
     },
 }
