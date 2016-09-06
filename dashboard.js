@@ -8,7 +8,7 @@ exports.View =
     elements:
     [
         { control: "stackpanel", width: "*", margin: { bottom: 5 }, background: "#ff6600", orientation: "Horizontal", contents: [
-            { control: "image", resource: "{logo}", width: 175 },
+            { control: "image", resource: "{logo}", height: 53, width: 175 },
             { control: "rectangle", width: "*", height: "1" },
             { select: "First", contents: [
                 { control: "button", filter: { deviceMetric: "os", is: "Web" }, verticalAlignment: "Center", margin: { right: 15 }, caption: "Refresh", icon: "refresh", enabled: "{!loading}", binding: "onRefresh" },
@@ -26,20 +26,20 @@ exports.View =
             { control: "border", style: "dashbox", width: "{dashboxWidth}", margin: { left: "{dashboxLeft}" }, binding: "goCompute", contents: [
                 { control: "stackpanel", padding: 15, width: "*", contents: [
 
-                    { control: "stackpanel", orientation: "Horizontal",  width: "*", contents: [
-                        { control: "text", value: "Compute Instances", style: "dashcap", width: "*" },
-                        { control: "image", resource: "{instancesLogo}", width: 40 }
+                    { control: "stackpanel", orientation: "Horizontal", width: "*", contents: [
+                        { control: "text", value: "Compute Instances", style: "dashCaption", margin: { top: 0, botttom: 0 }, width: "*" },
+                        { control: "image", resource: "{instancesLogo}", margin: { top: 0, bottom: 0 }, width: 40 }
                     ]},
 
                     { control: "stackpanel", width: "*", orientation: "Horizontal", contents: [
                         { control: "stackpanel", width: "*", orientation: "Vertical", contents: [
-                            { control: "text", value: "{running}", color: "White", width: "*", margin: { bottom: 0 }, padding: { bottom: 0 }, fontsize: 20 },
-                            { control: "text", value: "running", color: "White", width: "*", margin: { top: 0 }, padding: { top: 0 }, fontsize: 12 },
+                            { control: "text", value: "{running}", style: "dashValue", width: "*" },
+                            { control: "text", value: "running", style: "dashDetails", width: "*" },
                         ]},
                         { control: "rectangle", width: 3, height: "*", color: "#8e8e8e" },
                         { control: "stackpanel", width: "*", orientation: "Vertical", contents: [
-                            { control: "text", value: "{stopped}", color: "White", width: "*", margin: { bottom: 0 }, padding: { bottom: 0 }, fontsize: 20 },
-                            { control: "text", value: "stopped", color: "White", width: "*", margin: { top: 0 }, padding: { top: 0 }, fontsize: 12 },
+                            { control: "text", value: "{stopped}", style: "dashValue", width: "*" },
+                            { control: "text", value: "stopped", style: "dashDetails", width: "*" },
                         ]},
                     ]},
                 ]},
@@ -48,13 +48,13 @@ exports.View =
             { control: "border", style: "dashbox", width: "{dashboxWidth}", margin: { left: "{dashboxLeft}" }, binding: "goStorage", contents: [
                 { control: "stackpanel", padding: 15, width: "*", contents: [
                     { control: "stackpanel", orientation: "Horizontal",  width: "*", contents: [
-                        { control: "text", value: "Manta Storage", style: "dashcap", width: "*" },
+                        { control: "text", value: "Manta Storage", style: "dashCaption", width: "*" },
                         { control: "image", resource: "{mantaLogo}", width: 40 }
                     ]},
 
                     { control: "stackpanel", width: "*", orientation: "Horizontal", contents: [
-                        { control: "text", value: "{storageUsed}", color: "White", verticalAlignment: "Bottom", font: { bold: true, size: 20 } },
-                        { control: "text", value: "Mb", color: "White", verticalAlignment: "Bottom", fontsize: 20 },
+                        { control: "text", value: "{storageUsed}", style: "dashValue", verticalAlignment: "Bottom" },
+                        { control: "text", value: "Mb", style: "dashValue", verticalAlignment: "Bottom", font: { bold: false } },
                     ]},
                 ]},
             ]},
@@ -62,13 +62,13 @@ exports.View =
             { control: "border", style: "dashbox", width: "{dashboxWidth}", margin: { left: "{dashboxLeft}" }, binding: "goUsage", contents: [
                 { control: "stackpanel", padding: 15, width: "*", contents: [
                     { control: "stackpanel", orientation: "Horizontal",  width: "*", contents: [
-                        { control: "text", value: "Current Usage", style: "dashcap", width: "*" },
+                        { control: "text", value: "Current Usage", style: "dashCaption", width: "*" },
                         { control: "image", resource: "{usageLogo}", width: 40 }
                     ]},
 
                     { control: "stackpanel", width: "*", orientation: "Horizontal", contents: [
-                        { control: "text", value: "{currentUsage}", color: "White", verticalAlignment: "Bottom", font: { bold: true, size: 20 } },
-                        { control: "text", value: "Spent", color: "White", verticalAlignment: "Bottom", fontsize: 20 },
+                        { control: "text", value: "{currentUsage}", style: "dashValue", verticalAlignment: "Bottom" },
+                        { control: "text", value: "Spent", style: "dashValue", verticalAlignment: "Bottom", font: { bold: false } },
                     ]},
                 ]},
             ]},
@@ -78,6 +78,9 @@ exports.View =
             { control: "commandBar.button", text: "Refresh", winIcon: "Refresh", commandBar: "Bottom", binding: "onRefresh", filter: { deviceMetric: "os", is: ["Windows", "WinPhone"] }, enabled: "{!loading}" },
             { control: "actionBar.item", text: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "Android" }, enabled: "{!loading}" }, // !!! Icon?
             { control: "navBar.button", systemItem: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "iOS" }, enabled: "{!loading}" },
+
+            // !!! This is what I think the Android actionBar.item declaration should look like for refresh icon on the app bar...
+            // { control: "actionBar.item", icon: "refresh", showAsActon: "Always", binding: "onRefresh", filter: { deviceMetric: "os", is: "Android" }, enabled: "{!loading}" }, // !!! Icon?
         ]}
     ]
 }

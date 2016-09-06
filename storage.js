@@ -11,7 +11,7 @@ exports.View =
         { control: "stackpanel", width: "*", height: "*", contents: [
 
             { control: "stackpanel", width: "*", background: "#ff6600", orientation: "Horizontal", contents: [
-                { control: "image", resource: "{logo}", width: 175 },
+                { control: "image", resource: "{logo}", height: 53, width: 175 },
                 { control: "rectangle", width: "*", height: "1" },
                 { select: "First", contents: [
                     { control: "button", filter: { deviceMetric: "os", is: "Web" }, verticalAlignment: "Center", margin: { right: 15 }, caption: "Refresh", icon: "refresh", enabled: "{!loading}", binding: "onRefresh" },
