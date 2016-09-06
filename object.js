@@ -77,6 +77,7 @@ exports.Commands =
     },
     doSaveEdit: function * (context, session, viewModel, params)
     {
+        session.invalidateStorage = true;
         yield joyent.putFileText(context, viewModel.object.parent + "/" + viewModel.object.name, viewModel.objectText);
         viewModel.objectText = null;
     },
@@ -102,8 +103,9 @@ exports.Commands =
     {
         yield joyent.deleteFile(context, viewModel.object.parent + "/" + viewModel.object.name);
 
-        // !!! Exit page (return to parent, signal reload)
+        // Exit page (return to parent, signal reload)
         //
+        session.invalidateStorage = true;
         Synchro.pop(context);
     }
 }

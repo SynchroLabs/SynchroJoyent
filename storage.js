@@ -12,9 +12,10 @@ exports.View =
 
             { control: "stackpanel", width: "*", background: "#ff6600", orientation: "Horizontal", contents: [
                 { control: "image", resource: "{logo}", width: 175 },
-                { select: "All", filter: { deviceMetric: "os", is: "Web" }, contents: [
-                    { control: "rectangle", width: "*" },
-                    { control: "button", verticalAlignment: "Center", margin: { right: 15 }, caption: "Refresh", icon: "refresh", binding: "onRefresh" },
+                { control: "rectangle", width: "*", height: "1" },
+                { select: "First", contents: [
+                    { control: "button", filter: { deviceMetric: "os", is: "Web" }, verticalAlignment: "Center", margin: { right: 15 }, caption: "Refresh", icon: "refresh", enabled: "{!loading}", binding: "onRefresh" },
+                    { control: "progressring", height: 50, width: 50, value: "{loading}", visibility: "{loading}", verticalAlignment: "Center" },
                 ]},
             ]},
 
@@ -40,9 +41,9 @@ exports.View =
 
             // Platform-specific Refresh buttons...
             //
-            { control: "commandBar.button", text: "Refresh", winIcon: "Refresh", commandBar: "Bottom", binding: "onRefresh", filter: { deviceMetric: "os", is: ["Windows", "WinPhone"] } },
-            { control: "actionBar.item", text: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "Android" } }, // !!! Icon?
-            { control: "navBar.button", systemItem: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "iOS" } },
+            { control: "commandBar.button", text: "Refresh", winIcon: "Refresh", commandBar: "Bottom", binding: "onRefresh", filter: { deviceMetric: "os", is: ["Windows", "WinPhone"] }, enabled: "{!loading}" },
+            { control: "actionBar.item", text: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "Android" }, enabled: "{!loading}" }, // !!! Icon?
+            { control: "navBar.button", systemItem: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "iOS" }, enabled: "{!loading}" },
         ]}
     ]
 }
@@ -53,12 +54,18 @@ exports.InitializeViewModel = function(context, session, params, state)
     {
         logo: Synchro.getResourceUrl(context, "joyent-logo.png"),
         dir: "/",
-        items: []
+        items: [],
+        loading: true,
     }
 
-    if (state)
+    if (session.invalidateStorage)
+    {
+        delete session.invalidateStorage;
+    }
+    else if (state)
     {
         viewModel.items = state.items;
+        viewModel.loading = false;
     }
 
     return viewModel;
@@ -99,6 +106,7 @@ exports.LoadViewModel = function * (context, session, viewModel)
     }
 
     viewModel.dir = session.dir;
+    viewModel.loading = false;
 }
 
 exports.Commands = 
@@ -122,14 +130,21 @@ exports.Commands =
             {
                 session.dir = params.item.parent + "/" + params.item.name;
             }
+
+            viewModel.loading = true;
+            yield Synchro.interimUpdateAwaitable(context);
+
             viewModel.items = yield getFiles(context, session.dir);
             viewModel.dir = session.dir;
+            viewModel.loading = false;
         }
     },
     onRefresh: function * (context, session, viewModel, params)
     {
-        // !!! Waiting indicator / interimUpdate?
-        //
+        viewModel.loading = true;
+        yield Synchro.interimUpdateAwaitable(context);
+
         viewModel.items = yield getFiles(context, session.dir);
+        viewModel.loading = false;
     },
 }

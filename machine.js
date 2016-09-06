@@ -11,9 +11,10 @@ exports.View =
 
             { control: "stackpanel", width: "*", background: "#ff6600", orientation: "Horizontal", contents: [
                 { control: "image", resource: "{logo}", width: 175 },
-                { select: "All", filter: { deviceMetric: "os", is: "Web" }, contents: [
-                    { control: "rectangle", width: "*" },
-                    { control: "button", verticalAlignment: "Center", margin: { right: 15 }, caption: "Refresh", icon: "refresh", binding: "onRefresh" },
+                { control: "rectangle", width: "*", height: "1" },
+                { select: "First", contents: [
+                    { control: "button", filter: { deviceMetric: "os", is: "Web" }, verticalAlignment: "Center", margin: { right: 15 }, caption: "Refresh", icon: "refresh", enabled: "{!loading}", binding: "onRefresh" },
+                    { control: "progressring", height: 50, width: 50, value: "{loading}", visibility: "{loading}", verticalAlignment: "Center" },
                 ]},
             ]},
 
@@ -32,29 +33,33 @@ exports.View =
                 { control: "text", value: "State: {machine.state}", width: "*", fontsize: 8 },
             ]},
 
-            { control: "stackpanel", width: "*", orientation: "Horizontal", visibility: "{!operation}", contents: [
-                { control: "button", caption: "Start", icon: "play_arrow", binding: "onStart", visibility: "eval({machine.state} == 'stopped')" },
-                { control: "button", caption: "Stop", icon: "stop", binding: "onStop", visibility: "eval({machine.state} == 'running')"  },
-                { control: "button", caption: "Reboot", icon: "loop", binding: "onReboot", visibility: "eval({machine.state} == 'running')"  },
+            { control: "wrappanel", width: "*", orientation: "Horizontal", visibility: "eval(({machine.state} === 'stopped') && !{operation})", contents: [
+                { control: "button", caption: "Start", icon: "play_arrow", binding: "onStart" },
+                { control: "button", caption: "Delete", icon: "delete", binding: "onDelete" },
+            ]},
+
+            { control: "wrappanel", width: "*", orientation: "Horizontal", visibility: "eval(({machine.state} === 'running') && !{operation})", contents: [
+                { control: "button", caption: "Stop", icon: "stop", binding: "onStop" },
+                { control: "button", caption: "Reboot", icon: "loop", binding: "onReboot" },
                 { control: "button", caption: "Delete", icon: "delete", binding: "onDelete" },
             ]},
 
             { select: "First", contents: [
                 { filter: { deviceMetric: "os", is: "Web" }, control: "stackpanel", orientation: "Vertical", visibility: "{operation}", contents: [
                     { control: "progressring", width: 300, value: "{operation}", verticalAlignment: "Center" },
-                    { control: "text", value: "{operation}...", foreground: "Red", font: { size: 24, bold: true }, verticalAlignment: "Center" },
+                    { control: "text", value: "{operation}...", foreground: "Red", font: { size: 12, bold: true }, verticalAlignment: "Center" },
                 ] },
                 { control: "stackpanel", orientation: "Horizontal", visibility: "{operation}", contents: [
                     { control: "progressring", height: 50, width: 50, value: "{operation}", verticalAlignment: "Center" },
-                    { control: "text", value: "{operation}...", foreground: "Red", font: { size: 24, bold: true }, verticalAlignment: "Center" },
+                    { control: "text", value: "{operation}...", foreground: "Red", font: { size: 12, bold: true }, verticalAlignment: "Center" },
                 ] },
             ] },
 
             // Platform-specific Refresh buttons...
             //
-            { control: "commandBar.button", text: "Refresh", winIcon: "Refresh", commandBar: "Bottom", binding: "onRefresh", filter: { deviceMetric: "os", is: ["Windows", "WinPhone"] } },
-            { control: "actionBar.item", text: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "Android" } }, // !!! Icon?
-            { control: "navBar.button", systemItem: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "iOS" } },
+            { control: "commandBar.button", text: "Refresh", winIcon: "Refresh", commandBar: "Bottom", binding: "onRefresh", filter: { deviceMetric: "os", is: ["Windows", "WinPhone"] }, enabled: "{!loading}" },
+            { control: "actionBar.item", text: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "Android" }, enabled: "{!loading}" }, // !!! Icon?
+            { control: "navBar.button", systemItem: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "iOS" }, enabled: "{!loading}" },
         ]}
     ]
 }
@@ -88,7 +93,7 @@ function * processOperation(context, session, viewModel, operation, operationTim
     // Operations: Starting, Stopping, Rebooting, Deleting
     //
     var terminate = false;
- 
+
     viewModel.operation = operation;
     while (Synchro.isActiveInstance(context) && !terminate)
     {
@@ -170,9 +175,11 @@ exports.Commands =
 {
     onRefresh: function * (context, session, viewModel, params)
     {
-        // !!! Waiting indicator / interimUpdate?
-        //
+        viewModel.loading = true;
+        yield Synchro.interimUpdateAwaitable(context);
+
         viewModel.machine = yield joyent.getMachine(context, session.dataCenter, viewModel.machine.id, true);
+        viewModel.loading = false;
     },
     onStart: function * (context, session, viewModel)
     {
