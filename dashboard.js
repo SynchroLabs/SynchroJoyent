@@ -76,11 +76,8 @@ exports.View =
             // Platform-specific Refresh buttons...
             //
             { control: "commandBar.button", text: "Refresh", winIcon: "Refresh", commandBar: "Bottom", binding: "onRefresh", filter: { deviceMetric: "os", is: ["Windows", "WinPhone"] }, enabled: "{!loading}" },
-            { control: "actionBar.item", text: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "Android" }, enabled: "{!loading}" }, // !!! Icon?
+            { control: "actionBar.item", text: "Refresh", icon: "refresh", showAsAction: "Always", binding: "onRefresh", filter: { deviceMetric: "os", is: "Android" }, enabled: "{!loading}" },
             { control: "navBar.button", systemItem: "Refresh", binding: "onRefresh", filter: { deviceMetric: "os", is: "iOS" }, enabled: "{!loading}" },
-
-            // !!! This is what I think the Android actionBar.item declaration should look like for refresh icon on the app bar...
-            // { control: "actionBar.item", icon: "refresh", showAsActon: "Always", binding: "onRefresh", filter: { deviceMetric: "os", is: "Android" }, enabled: "{!loading}" }, // !!! Icon?
         ]}
     ]
 }
